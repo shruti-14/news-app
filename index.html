@@ -3,14 +3,28 @@
 <head>
 	<title>Werkspot Hacker News</title>
 	<link rel="stylesheet" href="./style.css">
+	<link href="https://fonts.googleapis.com/css2?family=Heebo&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 
 <body>
 	<div id="app">
+		<h1 class="appTtitle">Hacker News!</h1>
 		<div id="categoryContainer" class="categories">
+		</div>
+		<div id="loaderContainer" class="loaderContainer">
+			<div id="loader" class="loader"></div>
 		</div>
 		<div id="cardsContainer" class="list">
 		</div>
+		<footer class="paginationContainer">
+			<div class="paginationActionWrapper">
+				<i onclick="previousPageClicked()" id="previousBtn" class="fa fa-angle-left paginationIcon"></i>
+				<p id="pageNoText"></p>
+				<i onclick="nextPageClicked()" id="nextBtn" class="fa fa-angle-right paginationIcon"></i>
+			</div>
+
+		</footer>
 	</div>
 	<script src="./app.js"></script>
 </body>

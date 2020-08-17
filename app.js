@@ -1,65 +1,87 @@
-// This is just a simple sample code to show you the usage of the api
-// Feel free to rewrite and improve or delete and start from scratch
-
 const apiEndpoint = {
 	BASEURL: 'https://hacker-news.firebaseio.com/v0/'
 }
 let pageNo = 1;
+let paginationSet = 0;
+let catergoryType = 'topstories';
+const categories = [{
+	type: 'topstories',
+	label: 'Top',
+	selected: true
+}, {
+	type: 'newstories',
+	label: 'New',
+	selected: false
+}, {
+	type: 'beststories',
+	label: 'Best',
+	selected: false
+}, {
+	type: 'askstories',
+	label: 'Ask',
+	selected: false
+}, , {
+	type: 'showstories',
+	label: 'Show',
+	selected: false
+}, , {
+	type: 'jobstories',
+	label: 'Job',
+	selected: false
+}];
+const loaderContainer = document.getElementById('loaderContainer');
+const cardsContainer = document.getElementById('cardsContainer');
+const pageNoText = document.getElementById('pageNoText');
+pageNoText.innerHTML = pageNo;
 populateCategoriesPanel();
+setSelectedCategoryStyle();
 fetchNews('topstories');
 function populateCategoriesPanel() {
-	const categories = [{
-		type: 'topstories',
-		label: 'Top'
-	}, {
-		type: 'newstories',
-		label: 'New'
-	}, {
-		type: 'beststories',
-		label: 'Best'
-	}, {
-		type: 'askstories',
-		label: 'Ask'
-	}, , {
-		type: 'showstories',
-		label: 'Show'
-	}, , {
-		type: 'jobstories',
-		label: 'Job'
-	}];
-
 	categories.forEach(category => {
 		const categoryEle = document.createElement('DIV');
-		categoryEle.class = 'category';
+		categoryEle.id = category.label;
+		categoryEle.classList.add('category');
 		categoryEle.innerHTML = category.label;
-		categoryEle.onclick = () => fetchNews(category.type);
+		categoryEle.onclick = () => {
+			pageNo = 1;
+			catergoryType = category.type;
+			markCategorySelected(category.type);
+			fetchNews();
+		};
 		const categoryContainer = document.getElementById('categoryContainer');
 		categoryContainer.appendChild(categoryEle);
 	})
 }
-function showNewsOnCategoryClicked(type) {
-	fetchNews(type);
-}
-function nextPageClicked(type) {
+function nextPageClicked() {
 	pageNo++;
-	fetchNews(type);
+	pageNoText.innerHTML = pageNo;
+	fetchNews();
 }
-function previousPageClicked(type) {
+function previousPageClicked() {
 	pageNo--;
-	fetchNews(type);
+	pageNoText.innerHTML = pageNo;
+	fetchNews();
 }
-function fetchNews(type) {
+function setBtnDisability(type, isDisabled) {
+	const btn = document.getElementById(type + 'Btn');
+	btn.style.pointerEvents = isDisabled ? 'none' : 'visible';
+	btn.style.color = isDisabled ? '#a6a6a6' : 'white';
+}
+function fetchNews() {
+	cardsContainer.style.display = "none";
+	loaderContainer.style.display = "flex";
 	const getStoriesListRequest = new XMLHttpRequest();
 	getStoriesListRequest.addEventListener('load', processList);
-	getStoriesListRequest.open('GET', apiEndpoint.BASEURL + type + '.json');
+	getStoriesListRequest.open('GET', apiEndpoint.BASEURL + catergoryType + '.json');
 	getStoriesListRequest.send();
 }
 function processList(event) {
 	const mainList = JSON.parse(event.currentTarget.response);
-	const noOfPages = Math.floor(mainList.length / 30);
-	const batchIds = getBatchIds(pageNo, mainList);
-	const batches = formBatches(noOfPages);
+	paginationSet = Math.floor(mainList.length / 30);
+	const batchIds = getBatchIds(mainList);
+	const batches = formBatches();
 	const currentBatch = batches['page' + pageNo];
+	setPaginationBtnState();
 	batchIds.forEach(storyId => {
 		currentBatch['promises']['Promise' + storyId] = new Promise((resolve, reject) => {
 			const getSingleItemRequest = new XMLHttpRequest();
@@ -83,35 +105,71 @@ function processList(event) {
 	});
 }
 function populateList(items) {
-	const cardsCaontainer = document.getElementById('cardsContainer');
-	items.forEach(item => {
-		const card = document.createElement('DIV');
-		const cardTitle = document.createElement('H1');
-		const hoursAgo = document.createElement('P');
-		const commentsDiv = document.createElement('P');
-		hoursAgo.innerHTML = timeToHoursAgo(item.time);
-		cardTitle.innerHTML = item.title;
-		commentsDiv.innerHTML = item['kids'] && item['kids'].length > 0 ? item['kids'].length + ' Comments' : '';
-		card.appendChild(cardTitle);
-		card.appendChild(hoursAgo);
-		card.appendChild(commentsDiv);
-		cardsCaontainer.appendChild(card);
+	loaderContainer.style.display = "none";
+	cardsContainer.innerHTML = '';
+	cardsContainer.style.display = "block";
+	items.forEach((item) => {
+		if (item && Object.keys(item).length) {
+			const card = document.createElement('DIV');
+			card.classList.add('card');
+			const cardTitle = document.createElement('H3');
+			cardTitle.classList.add('cardTitle');
+			const detailsConatiner = document.createElement('DIV');
+			detailsConatiner.classList.add('detailsContainer');
+			const hoursAgo = createHoursAgoDiv(item);
+			cardTitle.innerHTML = item.title;
+			card.appendChild(cardTitle);
+			detailsConatiner.appendChild(hoursAgo);
+			if (item['kids'] && item['kids'].length) {
+				const commentsDiv = createCommentsDiv(item['kids'].length);
+				detailsConatiner.appendChild(commentsDiv);
+			}
+			card.appendChild(detailsConatiner);
+			cardsContainer.appendChild(card);
+			cardsContainer.onclick = () => {
+				if (item.url) {
+					window.open(item.url, '_blank');
+				}
+			}
+		}
 	});
+}
+function createCommentsDiv(count) {
+	const commentsDiv = document.createElement('DIV');
+	commentsDiv.setAttribute('class', 'commentsDiv');
+	const faIcon = document.createElement('i')
+	faIcon.setAttribute('class', 'fa fa-comments-o commentIcon');
+	const commentCount = document.createElement('p');
+	commentCount.setAttribute('class', 'commentCount')
+	commentCount.innerHTML = count;
+	commentsDiv.appendChild(faIcon);
+	commentsDiv.appendChild(commentCount);
+	return commentsDiv;
+}
+function createHoursAgoDiv(item) {
+	const hoursAgoDiv = document.createElement('DIV');
+	hoursAgoDiv.setAttribute('class', 'hoursAgoDiv');
+	const faIcon = document.createElement('i')
+	faIcon.setAttribute('class', 'fa fa-clock-o clockIcon');
+	const hoursAgoValue = document.createElement('p');
+	hoursAgoValue.setAttribute('class', 'hoursAgoValue')
+	hoursAgoValue.innerHTML = timeToHoursAgo(item.time);
+	hoursAgoDiv.appendChild(faIcon);
+	hoursAgoDiv.appendChild(hoursAgoValue);
+	return hoursAgoDiv;
 }
 function timeToHoursAgo(ts) {
 	var currentDate = new Date();
 	var nowTs = Math.floor(currentDate.getTime() / 1000);
 	var seconds = nowTs - ts;
-	// more that two days
 	if (seconds > 2 * 24 * 3600) {
-		return "a few days ago";
+		return "Few days ago";
 	}
-	// a day
 	if (seconds > 24 * 3600) {
-		return "yesterday";
+		return "Yesterday";
 	}
 	if (seconds > 3600) {
-		return "a few hours ago";
+		return "Few hours ago";
 	}
 	if (seconds > 1800) {
 		return "Half an hour ago";
@@ -125,9 +183,9 @@ function populatePromises(currentBatch) {
 		currentBatch['promiseStatusList'].push(currentBatch['promises'][promise]);
 	})
 }
-function formBatches(noOfPages) {
+function formBatches() {
 	const batches = {};
-	for (let i = 0; i < noOfPages; i++) {
+	for (let i = 1; i <= paginationSet; i++) {
 		batches['page' + i] = {
 			items: [],
 			promises: {},
@@ -136,8 +194,39 @@ function formBatches(noOfPages) {
 	}
 	return batches;
 }
-function getBatchIds(pageNo, mainList) {
+function getBatchIds(mainList) {
 	return pageNo === mainList.length / 30
 		? mainList.slice(pageNo * 30)
 		: mainList.slice(pageNo * 30, (pageNo * 30) + 30);
+}
+function setPaginationBtnState() {
+	if (pageNo === 1) {
+		setBtnDisability('next', false);
+		setBtnDisability('previous', true);
+		return;
+	}
+	else if (pageNo === paginationSet) {
+		setBtnDisability('next', true);
+		setBtnDisability('previous', false);
+		return;
+	}
+	setBtnDisability('next', false);
+	setBtnDisability('previous', false);
+	return;
+}
+function setSelectedCategoryStyle() {
+	categories.forEach(category => {
+		const categoryEle = document.getElementById(category.label);
+		categoryEle.style.border = category.selected ? '6px solid #4db8ff' : '6px solid #e6f5ff';
+	})
+}
+function markCategorySelected(catergoryType) {
+	categories.forEach(category => {
+		if (category.type === catergoryType) {
+			category.selected = true;
+		} else {
+			category.selected = false;
+		}
+	});
+	setSelectedCategoryStyle();
 }
